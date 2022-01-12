@@ -100,71 +100,76 @@ class _FutureMemoryImage extends ImageProvider<_FutureMemoryImage> {
       '$runtimeType(${describeIdentity(_futureBytes)}, scale: $_futureScale)';
 }
 
+/// Renders SF Symbols through iOS.
+/// Colors and sizes according to the [IconTheme]
+/// Supports multi-colored icons.
 class SFSymbol extends StatelessWidget {
   static const MethodChannel _channel =
       MethodChannel('plugins.flutter.io/sfsymbols');
 
-  //TODO semantics (default to icon name?)
-
+  /// The symbol identifier, for a list of symbols,
+  /// see https://developer.apple.com/sf-symbols/
   final String name;
-  final Color? primaryColor;
-  final Color? secondaryColor;
-  final Color? tertiaryColor;
+
+  /// The primary symbol color.
+  /// Defaults to the color specified in [IconTheme]
+  /// Opacity value is ignored in favor of the [IconTheme] opacity.
+  final SymbolColorPalette? palette;
+
   final double? pointSize;
+
+  /// The symbol weight.
+  /// See "Weights and Scales" on https://developer.apple.com/design/human-interface-guidelines/sf-symbols/overview
   final SymbolWeight? weight;
+
+  /// The symbols scale relative to its point size.
+  /// This can be used to emphasize an image compared to adjacent text.
+  /// See "Weights and Scales" on https://developer.apple.com/design/human-interface-guidelines/sf-symbols/overview
   final SymbolScale? scale;
 
+  /// Semantic label for the icon.
+  ///
+  /// Announced in accessibility modes (e.g TalkBack/VoiceOver).
+  /// This label does not show in the UI.
+  ///
+  /// Defaults to the symbol name.
+  ///
+  ///  * [SemanticsProperties.label], which is set to [semanticLabel] in the
+  ///    underlying	 [Semantics] widget.
+  final String? semanticsLabel;
+
   const SFSymbol(this.name,
-      {this.primaryColor,
-      this.secondaryColor,
-      this.tertiaryColor,
+      {this.palette,
       this.pointSize,
       this.weight,
       this.scale,
+      this.semanticsLabel,
       Key? key})
       : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     final IconThemeData iconTheme = IconTheme.of(context);
-    final Color? effectivePrimaryColor = primaryColor ?? iconTheme.color;
+    final SymbolColorPalette effectivePalette =
+        this.palette ?? SymbolColorPalette(iconTheme.color!);
     // Note that icontheme.size is probably not the same as iOS pointSize.
     final double? effectivePointSize = pointSize ?? iconTheme.size;
     final SymbolWeight? effectiveWeight = weight ?? SymbolWeight.regular;
     final SymbolScale? effectiveScale = scale ?? SymbolScale.system;
+    final String? effectiveSemanticsLabel = semanticsLabel ?? name;
+    final List<double> colors =
+        effectivePalette.toDoubleList(iconTheme.opacity ?? 1.0);
 
-    final List<double> colors = [
-      effectivePrimaryColor!.red.toDouble(),
-      effectivePrimaryColor.green.toDouble(),
-      effectivePrimaryColor.blue.toDouble(),
-      iconTheme.opacity!,
-    ];
-
-    if (secondaryColor != null) {
-      colors.addAll([
-        secondaryColor!.red.toDouble(),
-        secondaryColor!.green.toDouble(),
-        secondaryColor!.blue.toDouble(),
-        iconTheme.opacity!,
-      ]);
-    }
-
-    if (tertiaryColor != null) {
-      colors.addAll([
-        tertiaryColor!.red.toDouble(),
-        tertiaryColor!.green.toDouble(),
-        tertiaryColor!.blue.toDouble(),
-        iconTheme.opacity!,
-      ]);
-    }
-
-    return Image(
-      image: _load(
-        name,
-        colors,
-        effectivePointSize!,
-        effectiveWeight!.index,
-        effectiveScale!.index,
+    return Semantics(
+      label: effectiveSemanticsLabel,
+      child: Image(
+        image: _load(
+          name,
+          colors,
+          effectivePointSize!,
+          effectiveWeight!.index,
+          effectiveScale!.index,
+        ),
       ),
     );
   }
@@ -182,13 +187,16 @@ class SFSymbol extends StatelessWidget {
     int weightIndex,
     int scaleIndex,
   ) {
-    Future<Map?> loadInfo = _channel.invokeMapMethod('loadSymbol', [
-      name,
-      pointSize,
-      weightIndex,
-      scaleIndex,
-      colors,
-    ]);
+    Future<Map?> loadInfo = _channel.invokeMapMethod(
+      'loadSymbol',
+      [
+        name,
+        pointSize,
+        weightIndex,
+        scaleIndex,
+        colors,
+      ],
+    );
     Completer<Uint8List> bytesCompleter = Completer<Uint8List>();
     Completer<double> scaleCompleter = Completer<double>();
     loadInfo.then((map) {
@@ -225,4 +233,33 @@ enum SymbolScale {
   medium,
   large,
   system,
+}
+
+class SymbolColorPalette {
+  final Color primaryColor;
+  final Color? secondaryColor;
+  final Color? tertiaryColor;
+
+  const SymbolColorPalette(this.primaryColor,
+      {this.secondaryColor, this.tertiaryColor});
+
+  List<double> toDoubleList(double opacity) {
+    List<double> colors = _colorToDoubleList(primaryColor, opacity);
+    if (secondaryColor != null) {
+      colors.addAll(_colorToDoubleList(secondaryColor!, opacity));
+    }
+    if (tertiaryColor != null) {
+      colors.addAll(_colorToDoubleList(tertiaryColor!, opacity));
+    }
+    return colors;
+  }
+
+  List<double> _colorToDoubleList(Color color, double opacity) {
+    return [
+      color.red.toDouble() / 255,
+      color.green.toDouble() / 255,
+      color.blue.toDouble() / 255,
+      opacity,
+    ];
+  }
 }
