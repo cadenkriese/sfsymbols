@@ -1,25 +1,6 @@
-# SF Symbols
+# SF Symbols Plugin Prototype
 
-A Flutter plugin to load and display SF Symbols.
+This repository is a prototype for implementing an SF Symbols package in Flutter.
+The original issue can be found at [flutter/flutter#60034](https://github.com/flutter/flutter/issues/60034) there is also a design doc at https://flutter.dev/go/sfsymbols
 
-Note that this plugin requires iOS 13.0 or later, and is not available on Android.
-
-For some details on how iOS handles symbols, check out the [Apple Docs](https://developer.apple.com/documentation/uikit/uiimage/configuring_and_displaying_symbol_images_in_your_ui?language=objc).
-
-## Usage
-
-``` dart
-// Import package
-import 'package:sfsymbols/sfsymbols.dart';
-
-Widget build(BuildContext context) {
-  return MaterialApp(
-    home: Scaffold(
-      body: Center(
-        child: SFSymbol('face.smiling', weight: SymbolWeight.bold),
-      ),
-      //..
-    ),
-  );
-}
-```
+It's worth noting that I've never written any Objective-C before, so the platform code in here is a lot of guesswork and likely has some very basic mistakes. I'd really appreciate if someone could point them out to me either through issues or on the Flutter Discord (flogic#0001).
